@@ -554,30 +554,37 @@ class MainController {
         }
     }
 
+    async depositAddressSigningIteration() {
+        let resp;
+        try {
+            resp = await this.masterNodeComm.post(
+                'getUnsignedDepositAddresses',
+                10
+            );
+        } catch (e) {
+            console.error('Failed to get new deposit addresses', e);
+            return;
+        }
+        const {addresses} = resp.data;
+
+        if (!addresses || !addresses.length) {
+            return;
+        }
+
+        console.log("Got %d new deposit address mappings", addresses.length);
+        for (const address of addresses) {
+            await this.addAddressMapping(address);
+        }
+    }
+
     async pollAndSignDepositAddresses() {
         while (true) {
             await U.wasteTime(1);
-
-            let resp;
             try {
-                resp = await this.masterNodeComm.post(
-                    'getUnsignedDepositAddresses',
-                    10
-                );
-            } catch (e) {
-                console.error('Failed to get new deposit addresses', e);
-                continue;
+                await this.depositAddressSigningIteration();
             }
-
-            const {addresses} = resp.data;
-
-            if (!addresses || !addresses.length) {
-                continue;
-            }
-
-            console.log("Got %d new deposit address mappings", addresses.length);
-            for (const address of addresses) {
-                await this.addAddressMapping(address);
+            catch (e) {
+                console.error('Deposit address signing loop failed', e);
             }
         }
     }
